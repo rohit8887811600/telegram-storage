@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StoryTube — Telegram Stream Link Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a40;
+    --accent: #7c6af7;
+    --accent2: #f76a8a;
+    --accent3: #6af7c8;
+    --text: #e8e8f0;
+    --muted: #6a6a8a;
+    --success: #6af7c8;
+    --error: #f76a8a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(124,106,247,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 80%, rgba(247,106,138,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 60% 10%, rgba(106,247,200,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 56px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(124,106,247,0.2), rgba(247,106,138,0.1));
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 100px;
+    padding: 6px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  .logo-badge::before {
+    content: '◈';
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 400;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.6s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .card:nth-child(2) { animation-delay: 0.1s; }
+  .card:nth-child(3) { animation-delay: 0.2s; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* Form elements */
+  .field {
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+  }
+
+  input::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  .input-hint {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 6px;
+    opacity: 0.7;
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9d6af7);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(124,106,247,0.4);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    padding: 10px 16px;
+    width: auto;
+    border-radius: 10px;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Setup saved indicator */
+  .setup-saved {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(106,247,200,0.08);
+    border: 1px solid rgba(106,247,200,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent3);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 16px;
+  }
+
+  .setup-saved::before { content: '✓'; font-weight: 700; }
+
+  /* Result section */
+  .result-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .result-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .result-url {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent3);
+    word-break: break-all;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .copy-btn {
+    background: rgba(106,247,200,0.1);
+    border: 1px solid rgba(106,247,200,0.25);
+    color: var(--accent3);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover {
+    background: rgba(106,247,200,0.2);
+  }
+
+  .copy-btn.copied {
+    background: rgba(106,247,200,0.25);
+    color: white;
+  }
+
+  .test-btn {
+    background: rgba(124,106,247,0.1);
+    border: 1px solid rgba(124,106,247,0.25);
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .test-btn:hover { background: rgba(124,106,247,0.2); }
+
+  /* Audio player */
+  .audio-preview {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(124,106,247,0.05);
+    border: 1px solid rgba(124,106,247,0.15);
+    border-radius: 12px;
+  }
+
+  .audio-preview label {
+    font-size: 11px;
+    margin-bottom: 10px;
+    color: var(--accent);
+  }
+
+  audio {
+    width: 100%;
+    border-radius: 8px;
+    accent-color: var(--accent);
+  }
+
+  /* Status messages */
+  .status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  .status-loading {
+    background: rgba(124,106,247,0.1);
+    border: 1px solid rgba(124,106,247,0.2);
+    color: var(--accent);
+  }
+
+  .status-error {
+    background: rgba(247,106,138,0.1);
+    border: 1px solid rgba(247,106,138,0.2);
+    color: var(--error);
+  }
+
+  .status-success {
+    background: rgba(106,247,200,0.08);
+    border: 1px solid rgba(106,247,200,0.2);
+    color: var(--accent3);
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(124,106,247,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* How to use */
+  .howto {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.6s ease 0.3s both;
+  }
+
+  .howto-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .howto-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .howto-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .howto-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .howto-text {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    line-height: 1.6;
+    padding-top: 3px;
+  }
+
+  .howto-text strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 8px 0 24px;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    .container { padding: 32px 16px 60px; }
+    .card, .howto { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-badge">StoryTube Tool</div>
+    <h1>Telegram Stream<br>Link Generator</h1>
+    <p class="subtitle">Telegram file → Direct streamable URL</p>
+  </div>
+
+  <!-- Step 1: Setup -->
+  <div class="card" id="setupCard">
+    <div class="card-header">
+      <div class="step-badge">1</div>
+      <div>
+        <div class="card-title">Bot Setup</div>
+        <div class="card-desc">Apna Bot Token ek baar daalo</div>
+      </div>
+    </div>
+
+    <div id="setupSaved" class="setup-saved" style="display:none;">
+      Token saved hai — seedha Step 2 pe jaayein!
+    </div>
+
+    <div id="setupForm">
+      <div class="field">
+        <label>Bot Token</label>
+        <input type="password" id="tokenInput" placeholder="1234567890:AAFUnq3AdqFd..." autocomplete="off" />
+        <div class="input-hint">⚠️ Token sirf aapke browser mein save hoga, kahin send nahi hoga</div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:8px;">
+        <button class="btn btn-primary" onclick="saveToken()" style="flex:1;">Save Token</button>
+        <button class="btn btn-secondary" onclick="clearToken()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Convert -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">2</div>
+      <div>
+        <div class="card-title">Link Convert Karein</div>
+        <div class="card-desc">Telegram file_id ya message link paste karein</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Input Type</label>
+      <select id="inputType" onchange="toggleInputType()">
+        <option value="fileid">File ID (recommended)</option>
+        <option value="msglink">Telegram Message Link</option>
+      </select>
+    </div>
+
+    <div class="field" id="fileIdField">
+      <label>File ID</label>
+      <input type="text" id="fileIdInput" placeholder="CQACAgUAAyEFAATYAQ..." />
+      <div class="input-hint">getUpdates response se milta hai → audio.file_id</div>
+    </div>
+
+    <div class="field" id="msgLinkField" style="display:none;">
+      <label>Channel ID</label>
+      <input type="text" id="channelIdInput" placeholder="-1003623944525" />
+      <div class="input-hint">getUpdates se mila tha aapko</div>
+      <br>
+      <label>Message ID</label>
+      <input type="text" id="msgIdInput" placeholder="218" />
+      <div class="input-hint">Channel ke message ka number (getUpdates mein message_id)</div>
+    </div>
+
+    <button class="btn btn-primary" id="convertBtn" onclick="convertLink()" style="margin-top:8px;">
+      Generate Stream URL →
+    </button>
+
+    <div id="statusBox"></div>
+    <div id="resultBox"></div>
+  </div>
+
+  <!-- How to use -->
+  <div class="howto">
+    <div class="howto-title">📖 Kaise Use Karein</div>
+    <div class="howto-steps">
+      <div class="howto-step">
+        <div class="howto-num">1</div>
+        <div class="howto-text"><strong>BotFather</strong> se naya token lein aur Step 1 mein daalo</div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">2</div>
+        <div class="howto-text">getUpdates response se <strong>file_id</strong> copy karein (audio.file_id)</div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">3</div>
+        <div class="howto-text">Step 2 mein paste karein → <strong>Generate</strong> dabao</div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">4</div>
+        <div class="howto-text">Mila hua URL <strong>StoryTube app</strong> ke audio URL field mein paste karein ✓</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Load saved token on start
+  window.onload = () => {
+    const saved = sessionStorage.getItem('tg_token');
+    if (saved) {
+      document.getElementById('tokenInput').value = saved;
+      showSavedState(true);
+    }
+  };
+
+  function saveToken() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!token) return showStatus('Token daalo pehle!', 'error');
+    if (!token.includes(':')) return showStatus('Token format sahi nahi hai!', 'error');
+    sessionStorage.setItem('tg_token', token);
+    showSavedState(true);
+    showStatus('Token save ho gaya! ✓', 'success', 2000);
+  }
+
+  function clearToken() {
+    sessionStorage.removeItem('tg_token');
+    document.getElementById('tokenInput').value = '';
+    showSavedState(false);
+  }
+
+  function showSavedState(saved) {
+    document.getElementById('setupSaved').style.display = saved ? 'flex' : 'none';
+  }
+
+  function toggleInputType() {
+    const type = document.getElementById('inputType').value;
+    document.getElementById('fileIdField').style.display = type === 'fileid' ? 'block' : 'none';
+    document.getElementById('msgLinkField').style.display = type === 'msglink' ? 'block' : 'none';
+  }
+
+  function showStatus(msg, type, autoClear) {
+    const box = document.getElementById('statusBox');
+    const icons = { loading: '<div class="spinner"></div>', error: '✕', success: '✓' };
+    box.innerHTML = `<div class="status status-${type}">${icons[type] || ''}<span>${msg}</span></div>`;
+    if (autoClear) setTimeout(() => { box.innerHTML = ''; }, autoClear);
+  }
+
+  async function convertLink() {
+    const token = sessionStorage.getItem('tg_token') || document.getElementById('tokenInput').value.trim();
+    if (!token) return showStatus('Pehle Bot Token save karein (Step 1)', 'error');
+
+    const inputType = document.getElementById('inputType').value;
+    let fileId = '';
+
+    if (inputType === 'fileid') {
+      fileId = document.getElementById('fileIdInput').value.trim();
+      if (!fileId) return showStatus('File ID daalo!', 'error');
+      await getStreamUrl(token, fileId);
+
+    } else {
+      const channelId = document.getElementById('channelIdInput').value.trim();
+      const msgId = document.getElementById('msgIdInput').value.trim();
+      if (!channelId || !msgId) return showStatus('Channel ID aur Message ID dono chahiye!', 'error');
+      await getFileIdFromMessage(token, channelId, msgId);
+    }
+  }
+
+  async function getFileIdFromMessage(token, channelId, msgId) {
+    showStatus('Message se file_id nikal rahe hain...', 'loading');
+    document.getElementById('resultBox').innerHTML = '';
+
+    try {
+      const url = `https://api.telegram.org/bot${token}/forwardMessage`;
+      // Use getMessages approach via copyMessage trick
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: channelId, text: '.' })
+      });
+
+      // Actually use getUpdates filtered approach - direct getFile needs file_id
+      // So guide user to use file_id directly
+      showStatus('Message link se direct nahi ho sakta — getUpdates se file_id copy karein aur "File ID" option use karein.', 'error');
+
+    } catch (e) {
+      showStatus('Error: ' + e.message, 'error');
+    }
+  }
+
+  async function getStreamUrl(token, fileId) {
+    showStatus('Stream URL generate ho raha hai...', 'loading');
+    document.getElementById('resultBox').innerHTML = '';
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+      const data = await res.json();
+
+      if (!data.ok) {
+        return showStatus('Error: ' + (data.description || 'Kuch galat hua'), 'error');
+      }
+
+      const filePath = data.result.file_path;
+      const streamUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+      const fileSize = data.result.file_size;
+      const sizeMB = fileSize ? (fileSize / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown';
+
+      document.getElementById('statusBox').innerHTML = '';
+      document.getElementById('resultBox').innerHTML = `
+        <div class="result-box">
+          <div class="result-label">✓ Stream URL Ready — ${sizeMB}</div>
+          <div class="result-url" id="streamUrl">${streamUrl}</div>
+          <div class="result-actions">
+            <button class="copy-btn" id="copyBtn" onclick="copyUrl('${streamUrl}')">Copy URL</button>
+            <a class="test-btn" href="${streamUrl}" target="_blank">Open in Browser ↗</a>
+          </div>
+          <div class="audio-preview">
+            <label>▶ Preview (Test karein directly)</label>
+            <audio controls preload="none">
+              <source src="${streamUrl}" type="audio/mpeg">
+              Aapka browser audio support nahi karta.
+            </audio>
+          </div>
+        </div>
+      `;
+
+    } catch (e) {
+      showStatus('Network error: ' + e.message + ' — Check karein token sahi hai ya nahi.', 'error');
+    }
+  }
+
+  function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied! ✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy URL';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
